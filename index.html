@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オセロゲーム</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 2px;
+            margin: 20px auto;
+            width: 416px;
+            background-color: green;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #228B22;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .hint {
+            background-color: rgba(255, 255, 0, 0.5);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+        }
+        .disc {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            position: absolute;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .black {
+            background-color: black;
+        }
+        .white {
+            background-color: white;
+        }
+        .visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body>
+    <h1>オセロゲーム</h1>
+    <button onclick="toggleHints()">置ける場所の表示切替</button>
+    <div class="board" id="board"></div>
+    <script>
+        const board = document.getElementById("board");
+        const SIZE = 8;
+        let currentPlayer = "black";
+        let boardState = Array(SIZE).fill(null).map(() => Array(SIZE).fill(null));
+        let showHints = false;
+
+        function createBoard() {
+            for (let row = 0; row < SIZE; row++) {
+                for (let col = 0; col < SIZE; col++) {
+                    const cell = document.createElement("div");
+                    cell.classList.add("cell");
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener("click", placeDisc);
+                    board.appendChild(cell);
+                }
+            }
+            initializeBoard();
+        }
+
+        function initializeBoard() {
+            placeDiscAt(3, 3, "white");
+            placeDiscAt(3, 4, "black");
+            placeDiscAt(4, 3, "black");
+            placeDiscAt(4, 4, "white");
+            updateHints();
+        }
+
+        function placeDiscAt(row, col, color) {
+            boardState[row][col] = color;
+            const cell = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+            if (cell) {
+                const disc = document.createElement("div");
+                disc.classList.add("disc", color, "visible");
+                cell.appendChild(disc);
+            }
+        }
+
+        function placeDisc(event) {
+            const cell = event.target;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+
+            if (boardState[row][col] !== null || !isValidMove(row, col, currentPlayer)) return;
+
+            placeDiscAt(row, col, currentPlayer);
+            flipDiscs(row, col, currentPlayer);
+            currentPlayer = currentPlayer === "black" ? "white" : "black";
+            updateHints();
+        }
+
+        function isValidMove(row, col, color) {
+            return getFlippableDiscs(row, col, color).length > 0;
+        }
+
+        function getFlippableDiscs(row, col, color) {
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],         [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+            let flippable = [];
+
+            for (let [dx, dy] of directions) {
+                let r = row + dx, c = col + dy;
+                let line = [];
+                while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && boardState[r][c] !== null && boardState[r][c] !== color) {
+                    line.push([r, c]);
+                    r += dx;
+                    c += dy;
+                }
+                if (r >= 0 && r < SIZE && c >= 0 && c < SIZE && boardState[r][c] === color) {
+                    flippable = flippable.concat(line);
+                }
+            }
+            return flippable;
+        }
+
+        function flipDiscs(row, col, color) {
+            const flippable = getFlippableDiscs(row, col, color);
+            for (let [r, c] of flippable) {
+                boardState[r][c] = color;
+                const cell = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+                if (cell.firstChild) {
+                    cell.firstChild.classList.remove("black", "white");
+                    setTimeout(() => {
+                        cell.firstChild.classList.add(color);
+                    }, 100);
+                }
+            }
+        }
+
+        function updateHints() {
+            document.querySelectorAll(".hint").forEach(h => h.remove());
+            if (!showHints) return;
+            for (let row = 0; row < SIZE; row++) {
+                for (let col = 0; col < SIZE; col++) {
+                    if (boardState[row][col] === null && isValidMove(row, col, currentPlayer)) {
+                        const cell = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+                        const hint = document.createElement("div");
+                        hint.classList.add("hint");
+                        cell.appendChild(hint);
+                    }
+                }
+            }
+        }
+
+        function toggleHints() {
+            showHints = !showHints;
+            updateHints();
+        }
+
+        createBoard();
+    </script>
+</body>
+</html>
